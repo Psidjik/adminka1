@@ -2,7 +2,9 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_COMPOSE = 'docker-compose'
+        // Используем 'docker compose' (новая версия, встроенная в Docker CLI)
+        // вместо 'docker-compose' (старая версия, требует отдельной установки)
+        DOCKER_COMPOSE = 'docker compose'
     }
     
     stages {
@@ -13,23 +15,45 @@ pipeline {
             }
         }
         
+        stage('Check Docker') {
+            steps {
+                script {
+                    echo 'Checking Docker availability...'
+                    sh '''
+                        if ! command -v docker &> /dev/null; then
+                            echo "ERROR: Docker is not installed or not in PATH"
+                            exit 1
+                        fi
+                        docker --version
+                        docker info || echo "WARNING: Cannot connect to Docker daemon"
+                    '''
+                }
+            }
+        }
+        
         stage('Build') {
             steps {
-                echo 'Building Docker images...'
-                sh 'docker-compose build --no-cache'
+                script {
+                    echo 'Building Docker images...'
+                    // Используем 'docker compose' вместо 'docker-compose'
+                    sh 'docker compose version || docker-compose version || echo "Trying docker compose..."'
+                    sh 'docker compose build --no-cache || docker-compose build --no-cache'
+                }
             }
         }
         
         stage('Deploy') {
             steps {
-                echo 'Stopping existing containers...'
-                sh 'docker-compose down || true'
-                
-                echo 'Starting services...'
-                sh 'docker-compose up -d'
-                
-                echo 'Waiting for services to be ready...'
-                sh 'sleep 10'
+                script {
+                    echo 'Stopping existing containers...'
+                    sh 'docker compose down || docker-compose down || true'
+                    
+                    echo 'Starting services...'
+                    sh 'docker compose up -d || docker-compose up -d'
+                    
+                    echo 'Waiting for services to be ready...'
+                    sh 'sleep 15'
+                }
             }
         }
         
@@ -41,9 +65,9 @@ pipeline {
                     services.each { service ->
                         sh """
                             if docker ps | grep -q ${service}; then
-                                echo "${service} is running"
+                                echo "✅ ${service} is running"
                             else
-                                echo "WARNING: ${service} is not running"
+                                echo "⚠️ WARNING: ${service} is not running"
                             fi
                         """
                     }
@@ -56,7 +80,7 @@ pipeline {
         always {
             echo 'Pipeline execution completed'
             script {
-                sh 'docker-compose ps'
+                sh 'docker compose ps || docker-compose ps || docker ps'
             }
         }
         success {
@@ -68,7 +92,9 @@ pipeline {
         }
         failure {
             echo '❌ Deployment failed!'
-            sh 'docker-compose logs --tail=50'
+            script {
+                sh 'docker compose logs --tail=50 || docker-compose logs --tail=50 || echo "Cannot get logs"'
+            }
         }
     }
 }
