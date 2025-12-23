@@ -12,6 +12,7 @@ using User.Application.Command;
 using User.Domain.Data;
 
 const int GrpcPort = 28711;
+const int MetricsPort = 28713; // HTTP порт для метрик
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +51,7 @@ builder.WebHost.UseKestrel(options =>
 {
     options.AddServerHeader = false;
     options.ListenAnyIP(GrpcPort, opt => opt.Protocols = HttpProtocols.Http2);
+    options.ListenAnyIP(MetricsPort, opt => opt.Protocols = HttpProtocols.Http1); // HTTP/1.1 для метрик
 });
 
 var app = builder.Build();
@@ -64,7 +66,11 @@ app.MapGet("/",
     () =>
         "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 
-// Prometheus metrics endpoint
-app.MapMetrics("/metrics");
+// Prometheus metrics endpoint на HTTP порту
+app.MapWhen(ctx => ctx.Request.Host.Port == MetricsPort, intApp =>
+{
+    intApp.UseRouting();
+    intApp.UseEndpoints(endpoints => endpoints.MapMetrics("/metrics"));
+});
 
 app.Run();

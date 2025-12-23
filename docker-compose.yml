@@ -20,6 +20,7 @@ services:
     container_name: cabinet-booking
     ports:
       - "28710:28710"
+      - "28712:28712"
     restart: unless-stopped
     environment:
       - ConnectionStrings__CabinetBookingServiceConnection=Server=postgres;Port=5432;Database=cabinet_booking;User Id=postgres;Password=postgres
@@ -35,6 +36,7 @@ services:
     container_name: user
     ports:
       - "28711:28711"
+      - "28713:28713"
     restart: unless-stopped
     environment:
       - ConnectionStrings__UserServiceConnection=Server=postgres;Port=5432;Database=users;User Id=postgres;Password=postgres

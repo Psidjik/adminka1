@@ -11,20 +11,23 @@ scrape_configs:
         labels:
           service: 'api-gateway'
     metrics_path: '/metrics'
+    scheme: 'http'
 
   - job_name: 'cabinet-booking'
     static_configs:
-      - targets: ['cabinet-booking:28710']
+      - targets: ['cabinet-booking:28712']
         labels:
           service: 'cabinet-booking'
     metrics_path: '/metrics'
+    scheme: 'http'
 
   - job_name: 'user'
     static_configs:
-      - targets: ['user:28711']
+      - targets: ['user:28713']
         labels:
           service: 'user'
     metrics_path: '/metrics'
+    scheme: 'http'
 
   - job_name: 'prometheus'
     static_configs:

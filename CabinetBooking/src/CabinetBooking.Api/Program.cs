@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Prometheus;
 
 const int GrpcPort = 28710;
+const int MetricsPort = 28712; // HTTP порт для метрик
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,7 @@ builder.WebHost.UseKestrel(options =>
 {
     options.AddServerHeader = false;
     options.ListenAnyIP(GrpcPort, opt => opt.Protocols = HttpProtocols.Http2);
+    options.ListenAnyIP(MetricsPort, opt => opt.Protocols = HttpProtocols.Http1); // HTTP/1.1 для метрик
 });
 
 var app = builder.Build();
@@ -63,6 +65,13 @@ app.MapWhen(ctx => ctx.Request.Host.Port == GrpcPort, intApp =>
     intApp.UseEndpoints(endpoints => endpoints.MapGrpcService<CabinetBookingService.CabinetBookingServiceBase>());
 });
 
+// Prometheus metrics endpoint на HTTP порту
+app.MapWhen(ctx => ctx.Request.Host.Port == MetricsPort, intApp =>
+{
+    intApp.UseRouting();
+    intApp.UseEndpoints(endpoints => endpoints.MapMetrics("/metrics"));
+});
+
 using (var scope = app.Services.CreateScope())
 {
     var testDataService = scope.ServiceProvider.GetRequiredService<IGenerateTestData>();
@@ -85,8 +94,5 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapGrpcService<CabinetBookingGrpcService>();
-
-// Prometheus metrics endpoint
-app.MapMetrics("/metrics");
 
 app.Run();
