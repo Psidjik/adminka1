@@ -1,0 +1,730 @@
+================================================================================
+ОПИСАНИЕ DOCKERFILE, DOCKER-COMPOSE.YML И JENKINSFILE
+Проект: CabinetBooking
+================================================================================
+
+================================================================================
+1. DOCKERFILE - API-Gateway
+Путь: API-Gateway/Dockerfile
+================================================================================
+
+КОД:
+------
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+ARG BUILD_CONFIGURATION=Release 
+WORKDIR /src
+
+COPY . .
+RUN dotnet restore "src/Gateway.Api/Gateway.Api.csproj"
+
+COPY . .
+WORKDIR /src/src/Gateway.Api
+RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "Gateway.Api.dll"]
+
+ПОЯСНЕНИЕ:
+-----------
+Этот Dockerfile использует многостадийную сборку (multi-stage build) для создания
+оптимального образа API Gateway.
+
+СТАДИЯ 1: BUILD (сборка)
+- FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+  Использует образ .NET SDK 8.0 для компиляции кода
+  SDK содержит компилятор и все инструменты разработки
+
+- ARG BUILD_CONFIGURATION=Release
+  Аргумент сборки, по умолчанию Release (оптимизированная версия)
+
+- WORKDIR /src
+  Устанавливает рабочую директорию /src внутри контейнера
+
+- COPY . .
+  Копирует все файлы проекта в контейнер
+
+- RUN dotnet restore "src/Gateway.Api/Gateway.Api.csproj"
+  Восстанавливает NuGet пакеты (зависимости проекта)
+
+- WORKDIR /src/src/Gateway.Api
+  Переходит в директорию проекта API Gateway
+
+- RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish
+  Компилирует проект в режиме Release и публикует в /app/publish
+  Создает готовое к запуску приложение
+
+СТАДИЯ 2: FINAL (финальный образ)
+- FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+  Использует легкий образ ASP.NET Core Runtime (только для запуска)
+  Не содержит компилятор, поэтому образ меньше (~200MB vs ~800MB)
+
+- WORKDIR /app
+  Устанавливает рабочую директорию
+
+- COPY --from=build /app/publish .
+  Копирует скомпилированное приложение из стадии build
+  Только готовые файлы, без исходного кода
+
+- ENTRYPOINT ["dotnet", "Gateway.Api.dll"]
+  Команда запуска приложения при старте контейнера
+
+ПРЕИМУЩЕСТВА МНОГОСТАДИЙНОЙ СБОРКИ:
+- Финальный образ содержит только необходимое для запуска
+- Размер образа уменьшается в 3-4 раза
+- Безопасность: нет исходного кода и инструментов разработки
+
+
+================================================================================
+2. DOCKERFILE - CabinetBooking
+Путь: CabinetBooking/Dockerfile
+================================================================================
+
+КОД:
+------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY . .
+RUN dotnet restore "src/CabinetBooking.Api/CabinetBooking.Api.csproj"
+WORKDIR "/src/src/CabinetBooking.Api"
+RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish
+FROM base AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "CabinetBooking.Api.dll"]
+
+ПОЯСНЕНИЕ:
+-----------
+Аналогичная многостадийная сборка для сервиса CabinetBooking.
+
+СТАДИЯ 1: BASE (базовый образ)
+- FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+  Создает базовый образ с ASP.NET Core Runtime
+  Используется как основа для финального образа
+
+- WORKDIR /app
+  Устанавливает рабочую директорию
+
+СТАДИЯ 2: BUILD (сборка)
+- FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+  Образ для компиляции с .NET SDK
+
+- ARG BUILD_CONFIGURATION=Release
+  Конфигурация сборки
+
+- WORKDIR /src
+  Рабочая директория для исходного кода
+
+- COPY . .
+  Копирует все файлы проекта
+
+- RUN dotnet restore "src/CabinetBooking.Api/CabinetBooking.Api.csproj"
+  Восстанавливает зависимости
+
+- WORKDIR "/src/src/CabinetBooking.Api"
+  Переходит в директорию проекта
+
+- RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish
+  Компилирует и публикует приложение
+
+СТАДИЯ 3: FINAL (финальный образ)
+- FROM base AS final
+  Использует базовый образ (легкий ASP.NET Runtime)
+
+- WORKDIR /app
+  Рабочая директория
+
+- COPY --from=build /app/publish .
+  Копирует скомпилированное приложение
+
+- ENTRYPOINT ["dotnet", "CabinetBooking.Api.dll"]
+  Запускает приложение
+
+ОСОБЕННОСТИ:
+- Использует gRPC для связи с другими сервисами
+- Слушает на порту 28710 (gRPC) и 28712 (HTTP метрики)
+- Подключается к PostgreSQL для хранения данных
+
+
+================================================================================
+3. DOCKERFILE - User
+Путь: User/Dockerfile
+================================================================================
+
+КОД:
+------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY . .
+RUN dotnet restore "src/User.Api/User.Api.csproj"
+WORKDIR "/src/src/User.Api"
+RUN dotnet publish -c $BUILD_CONFIGURATION -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "User.Api.dll"]
+
+ПОЯСНЕНИЕ:
+-----------
+Структура идентична CabinetBooking, но для сервиса User.
+
+ОСОБЕННОСТИ:
+- Сервис аутентификации и авторизации
+- Использует JWT токены для безопасности
+- Слушает на порту 28711 (gRPC) и 28713 (HTTP метрики)
+- Хранит данные пользователей в PostgreSQL
+
+
+================================================================================
+4. DOCKER-COMPOSE.YML
+Путь: docker-compose.yml (корень проекта)
+================================================================================
+
+КОД:
+------
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: booking-db
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    volumes:
+      - ./postgresql-15:/var/lib/postgresql/data
+    ports:
+      - "5443:5432"
+    networks:
+      - external-network
+  
+  cabinet-booking:
+    build:
+      context: ./CabinetBooking
+      dockerfile: Dockerfile
+    container_name: cabinet-booking
+    ports:
+      - "28710:28710"
+      - "28712:28712"
+    restart: unless-stopped
+    environment:
+      - ConnectionStrings__CabinetBookingServiceConnection=Server=postgres;Port=5432;Database=cabinet_booking;User Id=postgres;Password=postgres
+    depends_on:
+      - postgres
+    networks:
+      - external-network
+
+  user:
+    build:
+      context: ./User
+      dockerfile: Dockerfile
+    container_name: user
+    ports:
+      - "28711:28711"
+      - "28713:28713"
+    restart: unless-stopped
+    environment:
+      - ConnectionStrings__UserServiceConnection=Server=postgres;Port=5432;Database=users;User Id=postgres;Password=postgres
+    depends_on:
+      - postgres
+    networks:
+      - external-network
+
+  api-gateway:
+    build:
+      context: ./API-Gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "28720:28720"
+      - "8080:8080"
+    restart: unless-stopped
+    depends_on:
+      - cabinet-booking
+      - user
+    networks:
+      - external-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - external-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - external-network
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  external-network:
+
+ПОЯСНЕНИЕ:
+-----------
+Docker Compose файл описывает всю инфраструктуру приложения - все сервисы,
+их настройки, связи между ними, сети и тома.
+
+СЕРВИСЫ:
+
+1. POSTGRES (База данных)
+   - image: postgres:15-alpine
+     Использует легкий Alpine образ PostgreSQL версии 15
+     Alpine Linux - минимальный дистрибутив (~5MB)
+
+   - container_name: booking-db
+     Имя контейнера для удобной идентификации
+
+   - restart: always
+     Автоматически перезапускается при падении или перезагрузке системы
+
+   - environment:
+     POSTGRES_PASSWORD: postgres
+     POSTGRES_USER: postgres
+     Учетные данные для подключения к БД
+
+   - volumes:
+     ./postgresql-15:/var/lib/postgresql/data
+     Сохраняет данные БД на хосте в папке postgresql-15
+     Данные не потеряются при удалении контейнера
+
+   - ports:
+     "5443:5432"
+     Пробрасывает порт 5432 контейнера на порт 5443 хоста
+     Можно подключиться с хоста: localhost:5443
+
+   - networks:
+     external-network
+     Подключает к общей сети для связи с другими сервисами
+
+2. CABINET-BOOKING (Сервис бронирования)
+   - build:
+     context: ./CabinetBooking
+     dockerfile: Dockerfile
+     Собирает образ из Dockerfile в папке CabinetBooking
+
+   - ports:
+     "28710:28710" - порт для gRPC
+     "28712:28712" - порт для HTTP метрик Prometheus
+
+   - environment:
+     ConnectionStrings__CabinetBookingServiceConnection=...
+     Строка подключения к БД
+     Использует имя сервиса "postgres" вместо localhost
+     (Docker Compose автоматически резолвит имена сервисов)
+
+   - depends_on:
+     - postgres
+     Ждет запуска postgres перед стартом
+     Обеспечивает правильный порядок запуска
+
+3. USER (Сервис пользователей)
+   - Аналогичная структура
+   - Порт 28711 (gRPC) и 28713 (HTTP метрики)
+   - Подключается к той же БД, но к другой схеме "users"
+
+4. API-GATEWAY (Шлюз приложения)
+   - Порт 8080 - основной HTTP порт для GraphQL
+   - Порт 28720 - резервный порт
+   - depends_on: cabinet-booking, user
+     Ждет запуска обоих сервисов
+   - Выступает единой точкой входа для клиентов
+
+5. PROMETHEUS (Сбор метрик)
+   - image: prom/prometheus:latest
+     Готовый образ, не требует сборки
+
+   - volumes:
+     ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+     Монтирует конфигурацию с хоста
+     prometheus-data:/prometheus
+     Том для хранения метрик (сохраняется между перезапусками)
+
+   - command:
+     --config.file=/etc/prometheus/prometheus.yml
+     --storage.tsdb.path=/prometheus
+     Параметры запуска Prometheus
+
+6. GRAFANA (Визуализация метрик)
+   - image: grafana/grafana:latest
+     Готовый образ
+
+   - environment:
+     GF_SECURITY_ADMIN_USER=admin
+     GF_SECURITY_ADMIN_PASSWORD=admin
+     Учетные данные администратора
+
+   - volumes:
+     grafana-data:/var/lib/grafana
+     Сохраняет дашборды и настройки
+     ./grafana/provisioning:/etc/grafana/provisioning
+     Автоматическая настройка источников данных и дашбордов
+
+   - depends_on:
+     - prometheus
+     Ждет запуска Prometheus
+
+VOLUMES (Тома):
+- prometheus-data: Хранит метрики Prometheus
+- grafana-data: Хранит настройки Grafana
+Тома сохраняют данные между перезапусками контейнеров
+
+NETWORKS (Сети):
+- external-network: Общая сеть для всех сервисов
+  Позволяет сервисам обращаться друг к другу по имени
+  Например: api-gateway может обратиться к cabinet-booking по имени "cabinet-booking"
+
+ПРЕИМУЩЕСТВА DOCKER COMPOSE:
+- Один файл описывает всю инфраструктуру
+- Автоматическое управление зависимостями
+- Простой запуск: docker-compose up -d
+- Изоляция сервисов в одной сети
+- Управление томами и портами
+
+
+================================================================================
+5. JENKINSFILE
+Путь: Jenkinsfile (корень проекта)
+================================================================================
+
+КОД:
+------
+pipeline {
+    agent any
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out code from repository...'
+                checkout scm
+            }
+        }
+        
+        stage('Validate') {
+            steps {
+                script {
+                    echo '✅ Validating project structure...'
+                    sh '''
+                        echo "Checking project files..."
+                        ls -la
+                        echo ""
+                        echo "Checking docker-compose.yml..."
+                        test -f docker-compose.yml && echo "✅ docker-compose.yml found" || echo "❌ docker-compose.yml not found"
+                        echo ""
+                        echo "Checking Jenkinsfile..."
+                        test -f Jenkinsfile && echo "✅ Jenkinsfile found" || echo "❌ Jenkinsfile not found"
+                        echo ""
+                        echo "Checking project directories..."
+                        test -d API-Gateway && echo "✅ API-Gateway directory found" || echo "❌ API-Gateway not found"
+                        test -d CabinetBooking && echo "✅ CabinetBooking directory found" || echo "❌ CabinetBooking not found"
+                        test -d User && echo "✅ User directory found" || echo "❌ User not found"
+                        test -d prometheus && echo "✅ prometheus directory found" || echo "❌ prometheus not found"
+                        test -d grafana && echo "✅ grafana directory found" || echo "❌ grafana not found"
+                    '''
+                }
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                script {
+                    echo '🔨 Building Docker images...'
+                    try {
+                        // Пытаемся использовать docker-compose (если установлен)
+                        sh '''
+                            if command -v docker-compose &> /dev/null; then
+                                echo "Using docker-compose..."
+                                docker-compose --version
+                                docker-compose build --no-cache
+                            elif command -v docker &> /dev/null && docker compose version &> /dev/null; then
+                                echo "Using docker compose..."
+                                docker compose version
+                                docker compose build --no-cache
+                            else
+                                echo "⚠️ Docker Compose not available in Jenkins container"
+                                echo "This is expected on Windows - Jenkins cannot access Docker daemon from container"
+                                echo "For demonstration: Code is validated, build should be done on host machine"
+                                exit 0
+                            fi
+                        '''
+                    } catch (Exception e) {
+                        echo "⚠️ Build stage skipped: ${e.getMessage()}"
+                        echo "💡 Note: On Windows, Jenkins in container cannot access Docker daemon"
+                        echo "💡 For production: Use Jenkins on host or configure Docker-in-Docker"
+                        echo "✅ Code validation passed - ready for manual deployment"
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            steps {
+                script {
+                    echo '🚀 Deploying services...'
+                    try {
+                        sh '''
+                            if command -v docker-compose &> /dev/null; then
+                                docker-compose down || true
+                                docker-compose up -d
+                            elif command -v docker &> /dev/null && docker compose version &> /dev/null; then
+                                docker compose down || true
+                                docker compose up -d
+                            else
+                                echo "⚠️ Deployment skipped - Docker Compose not available"
+                                echo "💡 Run manually on host: docker-compose up -d"
+                                exit 0
+                            fi
+                        '''
+                    } catch (Exception e) {
+                        echo "⚠️ Deploy stage skipped: ${e.getMessage()}"
+                        echo "💡 Run deployment manually: docker-compose up -d"
+                    }
+                }
+            }
+        }
+        
+        stage('Info') {
+            steps {
+                script {
+                    echo '📋 Build Information:'
+                    sh '''
+                        echo "Repository: https://github.com/Psidjik/adminka1.git"
+                        echo "Branch: $(git rev-parse --abbrev-ref HEAD)"
+                        echo "Commit: $(git rev-parse --short HEAD)"
+                        echo "Author: $(git log -1 --pretty=format:'%an')"
+                        echo "Message: $(git log -1 --pretty=format:'%s')"
+                        echo ""
+                        echo "📦 CI/CD Pipeline executed successfully!"
+                        echo ""
+                        echo "📊 Services will be available at:"
+                        echo "   - API Gateway: http://localhost:8080"
+                        echo "   - Prometheus: http://localhost:9090"
+                        echo "   - Grafana: http://localhost:3000"
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '✅ Pipeline execution completed!'
+            echo '📝 Jenkins automatically triggered on Git push'
+        }
+        success {
+            echo '✅ CI/CD Pipeline successful!'
+            echo '📦 Code validated and ready for deployment'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+            echo 'Please check the logs above for details.'
+        }
+    }
+}
+
+ПОЯСНЕНИЕ:
+-----------
+Jenkinsfile описывает CI/CD pipeline - автоматизированный процесс сборки,
+проверки и развертывания приложения.
+
+СТРУКТУРА PIPELINE:
+
+1. pipeline { ... }
+   Объявляет Jenkins Pipeline (Declarative Syntax)
+
+2. agent any
+   Запускает pipeline на любом доступном агенте Jenkins
+   (в нашем случае - на самом Jenkins сервере)
+
+СТАДИИ (STAGES):
+
+СТАДИЯ 1: CHECKOUT (Получение кода)
+- checkout scm
+  Скачивает код из Git репозитория
+  SCM = Source Control Management (система контроля версий)
+  Jenkins автоматически определяет репозиторий из настроек Pipeline
+
+СТАДИЯ 2: VALIDATE (Проверка структуры)
+- Проверяет наличие всех необходимых файлов и папок:
+  * docker-compose.yml - файл оркестрации
+  * Jenkinsfile - сам pipeline
+  * API-Gateway, CabinetBooking, User - директории сервисов
+  * prometheus, grafana - директории конфигурации
+- Использует команду test для проверки существования файлов
+- Выводит понятные сообщения об успехе/ошибке
+
+СТАДИЯ 3: BUILD (Сборка)
+- Пытается собрать Docker образы через docker-compose
+- Проверяет наличие docker-compose или docker compose
+- Использует try-catch для обработки ошибок
+- Если docker-compose недоступен (как в контейнере Jenkins на Windows):
+  * Не падает с ошибкой
+  * Выводит информативное сообщение
+  * Продолжает выполнение pipeline
+- --no-cache: пересобирает образы без использования кэша
+
+СТАДИЯ 4: DEPLOY (Развертывание)
+- Пытается развернуть приложение через docker-compose
+- docker-compose down: останавливает старые контейнеры
+- docker-compose up -d: запускает новые контейнеры в фоне
+- || true: игнорирует ошибки (если контейнеры не запущены)
+- Если недоступно - выводит инструкцию для ручного запуска
+
+СТАДИЯ 5: INFO (Информация)
+- Выводит информацию о сборке:
+  * URL репозитория
+  * Ветка Git
+  * Хеш коммита
+  * Автор коммита
+  * Сообщение коммита
+- Показывает адреса сервисов после развертывания
+
+POST-ДЕЙСТВИЯ (POST):
+
+post { ... } - выполняются после всех стадий
+
+- always: Выполняется всегда (успех или ошибка)
+  Выводит общее сообщение о завершении
+
+- success: Выполняется только при успешном завершении
+  Выводит сообщение об успехе
+
+- failure: Выполняется только при ошибке
+  Выводит сообщение об ошибке
+
+ОСОБЕННОСТИ ДЛЯ WINDOWS:
+
+Pipeline учитывает ограничения Jenkins в Docker контейнере на Windows:
+- Jenkins в контейнере не может напрямую использовать Docker daemon хоста
+- Build и Deploy стадии обрабатывают эту ситуацию gracefully
+- Не падают с ошибкой, а выводят информативные сообщения
+- Для полной автоматизации нужно использовать Jenkins на хосте или Docker-in-Docker
+
+АВТОМАТИЧЕСКИЙ ЗАПУСК:
+
+Pipeline автоматически запускается при:
+- Push в Git (если настроен Poll SCM или Webhook)
+- Ручном запуске через "Build Now"
+- По расписанию (если настроено)
+
+CI/CD ПРОЦЕСС:
+
+1. Разработчик делает изменения в коде
+2. Коммитит и пушит в Git
+3. Jenkins автоматически обнаруживает изменения
+4. Запускает pipeline:
+   - Скачивает код
+   - Проверяет структуру
+   - Пытается собрать и развернуть
+5. Выводит результат
+
+ПРЕИМУЩЕСТВА:
+
+- Автоматизация: не нужно вручную собирать и развертывать
+- Консистентность: всегда одинаковая процедура
+- Отслеживаемость: все действия логируются
+- Быстрое обнаружение ошибок: проблемы видны сразу
+
+
+================================================================================
+ИТОГОВАЯ СВЯЗЬ ВСЕХ КОМПОНЕНТОВ
+================================================================================
+
+1. DOCKERFILE (для каждого сервиса)
+   Создает Docker образ приложения
+   ├── Собирает .NET приложение
+   ├── Оптимизирует размер образа
+   └── Готовит к запуску в контейнере
+
+2. DOCKER-COMPOSE.YML
+   Оркестрирует все сервисы
+   ├── Определяет все контейнеры
+   ├── Настраивает сети и тома
+   ├── Управляет зависимостями
+   └── Пробрасывает порты
+
+3. JENKINSFILE
+   Автоматизирует CI/CD процесс
+   ├── Получает код из Git
+   ├── Проверяет структуру проекта
+   ├── Собирает Docker образы (через docker-compose)
+   └── Развертывает приложение
+
+ПРОЦЕСС РАБОТЫ:
+
+Разработчик → Git Push
+    ↓
+Jenkins (Jenkinsfile) → Автоматический запуск
+    ↓
+Checkout → Скачивание кода
+    ↓
+Validate → Проверка структуры
+    ↓
+Build → docker-compose build (использует Dockerfile)
+    ↓
+Deploy → docker-compose up (использует docker-compose.yml)
+    ↓
+Приложение запущено и работает!
+
+
+================================================================================
+КОМАНДЫ ДЛЯ РАБОТЫ
+================================================================================
+
+СБОРКА ОБРАЗОВ:
+docker-compose build
+
+ЗАПУСК ВСЕХ СЕРВИСОВ:
+docker-compose up -d
+
+ОСТАНОВКА:
+docker-compose down
+
+ПРОСМОТР ЛОГОВ:
+docker-compose logs -f [имя_сервиса]
+
+ПЕРЕСБОРКА И ПЕРЕЗАПУСК:
+docker-compose up -d --build
+
+ПРОВЕРКА СТАТУСА:
+docker-compose ps
+
+
+================================================================================
+КОНЕЦ ДОКУМЕНТА
+================================================================================
+
