@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CabinetBooking.Api", "src/CabinetBooking.Api\CabinetBooking.Api.csproj", "{56A8AFA6-83CD-4AFB-9C91-E385720C9619}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CabinetBooking.Domain", "src\CabinetBooking.Domain\CabinetBooking.Domain.csproj", "{692BCF45-00EE-42A2-92B2-11E8E5FA6D1D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CabinetBooking.Domain.Data", "src\CabinetBooking.Domain.Data\CabinetBooking.Domain.Data.csproj", "{1ADEE216-E096-4DBD-BC4C-85DF81921201}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CabinetBooking.Application", "src\CabinetBooking.Application\CabinetBooking.Application.csproj", "{FC7D99C1-5C0C-4E78-8CE1-D9A67DBF6DD4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{56A8AFA6-83CD-4AFB-9C91-E385720C9619}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56A8AFA6-83CD-4AFB-9C91-E385720C9619}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56A8AFA6-83CD-4AFB-9C91-E385720C9619}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56A8AFA6-83CD-4AFB-9C91-E385720C9619}.Release|Any CPU.Build.0 = Release|Any CPU
+		{692BCF45-00EE-42A2-92B2-11E8E5FA6D1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{692BCF45-00EE-42A2-92B2-11E8E5FA6D1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{692BCF45-00EE-42A2-92B2-11E8E5FA6D1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{692BCF45-00EE-42A2-92B2-11E8E5FA6D1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1ADEE216-E096-4DBD-BC4C-85DF81921201}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1ADEE216-E096-4DBD-BC4C-85DF81921201}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1ADEE216-E096-4DBD-BC4C-85DF81921201}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1ADEE216-E096-4DBD-BC4C-85DF81921201}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC7D99C1-5C0C-4E78-8CE1-D9A67DBF6DD4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC7D99C1-5C0C-4E78-8CE1-D9A67DBF6DD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC7D99C1-5C0C-4E78-8CE1-D9A67DBF6DD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC7D99C1-5C0C-4E78-8CE1-D9A67DBF6DD4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

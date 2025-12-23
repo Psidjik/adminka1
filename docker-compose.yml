@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: booking-db
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    volumes:
+      - ./postgresql-15:/var/lib/postgresql/data
+    ports:
+      - "5443:5432"
+    networks:
+      - external-network
+  
+  cabinet-booking:
+    build:
+      context: ./CabinetBooking
+      dockerfile: Dockerfile
+    container_name: cabinet-booking
+    ports:
+      - "28710:28710"
+    restart: unless-stopped
+    environment:
+      - ConnectionStrings__CabinetBookingServiceConnection=Server=postgres;Port=5432;Database=cabinet_booking;User Id=postgres;Password=postgres
+    depends_on:
+      - postgres
+    networks:
+      - external-network
+
+  user:
+    build:
+      context: ./User
+      dockerfile: Dockerfile
+    container_name: user
+    ports:
+      - "28711:28711"
+    restart: unless-stopped
+    environment:
+      - ConnectionStrings__UserServiceConnection=Server=postgres;Port=5432;Database=users;User Id=postgres;Password=postgres
+    depends_on:
+      - postgres
+    networks:
+      - external-network
+
+  api-gateway:
+    build:
+      context: ./API-Gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "28720:28720"
+      - "8080:8080"
+    restart: unless-stopped
+    depends_on:
+      - cabinet-booking
+      - user
+    networks:
+      - external-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - external-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - external-network
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  external-network:

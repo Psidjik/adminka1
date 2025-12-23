@@ -1,0 +1,30 @@
+﻿syntax = "proto3";
+
+package auth;
+
+option csharp_namespace = "Auth";
+
+message FullName {
+  // Имя
+  string name = 1;
+  // Фамилия
+  string surname = 2;
+  // Отчество
+  optional string patronymic = 3;
+}
+// Entity: Teacher
+message Teacher {
+  // Табельный номер преподавателя
+  string personal_number = 1;
+  // Пароль
+  string password = 2;
+  // Value Object: FullName
+  FullName full_name = 3;
+}
+
+message TokenResponse {
+  // Токен доступа
+  string access_token = 1;
+  // Refresh токен
+  string refresh_token = 2;
+}

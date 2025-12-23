@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package cabinet_booking;
+
+import "Protos/models.proto";
+import "google/protobuf/timestamp.proto";
+    
+option csharp_namespace = "CabinetBooking";
+
+service CabinetBookingService {
+  rpc AddCabinet (AddCabinetRequest) returns (AddCabinetResponse);
+  rpc GetAvailableCabinets (AvailableCabinetsRequest) returns (AvailableCabinetsResponse);
+  rpc GetFreeCabinets (FreeCabinetsRequest) returns (FreeCabinetsResponse);
+  rpc BookCabinet (BookCabinetRequest) returns (BookCabinetResponse);
+}
+
+message AvailableCabinetsRequest {
+  google.protobuf.Timestamp  date = 1;
+  int32 lesson_number = 2;
+  optional int32 building_number = 3;
+  optional CabinetType cabinet_type = 4;
+}
+
+message AvailableCabinetsResponse {
+  repeated string cabinet_ids = 1;
+}
+
+message AddCabinetRequest {
+  Cabinet cabinet = 1;
+}
+
+message AddCabinetResponse {
+  string number = 1;
+}
+
+message FreeCabinetsRequest {
+  google.protobuf.Timestamp start_date = 1;
+  google.protobuf.Timestamp end_date = 2;
+  optional CabinetType cabinet_type = 3;
+  optional int32 building_number = 4;
+}
+
+message FreeCabinets {
+  google.protobuf.Timestamp date = 1;
+  int32 lesson_number = 2;
+  int32 available_cabinets_count = 3;
+}
+
+message FreeCabinetsResponse {
+  repeated FreeCabinets statistics = 1;
+}
+
+message BookCabinetRequest {
+  string cabinet_id = 1;
+  google.protobuf.Timestamp date = 2; // Или google.protobuf.Timestamp
+  int32 lesson_number = 3;
+}
+
+message BookCabinetResponse {
+  bool success = 1;
+  string message = 2;
+}

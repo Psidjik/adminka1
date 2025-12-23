@@ -1,0 +1,59 @@
+﻿syntax = "proto3";
+
+package auth;
+
+import "Protos/auth_models.proto";
+
+option csharp_namespace = "Auth";
+
+service AuthService {
+  // Метод регистрации
+  rpc Register (RegisterRequest) returns (RegisterResponse);
+  // Метод для входа
+  rpc Login (LoginRequest) returns (LoginResponse);
+  // Метод для выхода
+  rpc Logout (LogoutRequest) returns (LogoutResponse);
+  // Метод для получения нового accesstoken
+  rpc RefreshAccessToken(RefreshAccessTokenRequest) returns (RefreshAccessTokenResponse);
+  // Метод для валидации accesstoken 
+  rpc ValidateAccessToken(ValidateAccessTokenRequest) returns (ValidateAccessTokenResponse);
+}
+
+message RefreshAccessTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshAccessTokenResponse {
+  string access_token = 1;
+}
+
+message RegisterRequest {
+  Teacher teacher = 1;
+}
+
+message RegisterResponse {
+}
+
+message LoginRequest {
+  string personal_number = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  TokenResponse tokens = 1;
+}
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
+
+message LogoutResponse {
+}
+
+message ValidateAccessTokenRequest{
+  string access_token = 1;
+}
+
+message ValidateAccessTokenResponse{
+  bool is_valid = 1;
+}

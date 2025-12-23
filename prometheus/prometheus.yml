@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'cabinet-booking-monitor'
+
+scrape_configs:
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8080']
+        labels:
+          service: 'api-gateway'
+    metrics_path: '/metrics'
+
+  - job_name: 'cabinet-booking'
+    static_configs:
+      - targets: ['cabinet-booking:28710']
+        labels:
+          service: 'cabinet-booking'
+    metrics_path: '/metrics'
+
+  - job_name: 'user'
+    static_configs:
+      - targets: ['user:28711']
+        labels:
+          service: 'user'
+    metrics_path: '/metrics'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
