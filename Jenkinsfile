@@ -15,29 +15,13 @@ pipeline {
             }
         }
         
-        stage('Check Docker') {
-            steps {
-                script {
-                    echo 'Checking Docker availability...'
-                    sh '''
-                        if ! command -v docker &> /dev/null; then
-                            echo "ERROR: Docker is not installed or not in PATH"
-                            exit 1
-                        fi
-                        docker --version
-                        docker info || echo "WARNING: Cannot connect to Docker daemon"
-                    '''
-                }
-            }
-        }
-        
         stage('Build') {
             steps {
                 script {
                     echo 'Building Docker images...'
-                    // Используем 'docker compose' вместо 'docker-compose'
-                    sh 'docker compose version || docker-compose version || echo "Trying docker compose..."'
-                    sh 'docker compose build --no-cache || docker-compose build --no-cache'
+                    // Используем docker-compose (установлен в контейнер)
+                    sh 'docker-compose --version || echo "docker-compose not found"'
+                    sh 'docker-compose build --no-cache'
                 }
             }
         }
@@ -46,10 +30,10 @@ pipeline {
             steps {
                 script {
                     echo 'Stopping existing containers...'
-                    sh 'docker compose down || docker-compose down || true'
+                    sh 'docker-compose down || true'
                     
                     echo 'Starting services...'
-                    sh 'docker compose up -d || docker-compose up -d'
+                    sh 'docker-compose up -d'
                     
                     echo 'Waiting for services to be ready...'
                     sh 'sleep 15'
@@ -61,16 +45,7 @@ pipeline {
             steps {
                 echo 'Checking service health...'
                 script {
-                    def services = ['api-gateway', 'cabinet-booking', 'user', 'prometheus', 'grafana']
-                    services.each { service ->
-                        sh """
-                            if docker ps | grep -q ${service}; then
-                                echo "✅ ${service} is running"
-                            else
-                                echo "⚠️ WARNING: ${service} is not running"
-                            fi
-                        """
-                    }
+                    sh 'docker-compose ps || echo "Cannot check services"'
                 }
             }
         }
@@ -80,7 +55,7 @@ pipeline {
         always {
             echo 'Pipeline execution completed'
             script {
-                sh 'docker compose ps || docker-compose ps || docker ps'
+                sh 'docker-compose ps || echo "Cannot check status"'
             }
         }
         success {
@@ -93,7 +68,7 @@ pipeline {
         failure {
             echo '❌ Deployment failed!'
             script {
-                sh 'docker compose logs --tail=50 || docker-compose logs --tail=50 || echo "Cannot get logs"'
+                sh 'docker-compose logs --tail=50 || echo "Cannot get logs"'
             }
         }
     }
